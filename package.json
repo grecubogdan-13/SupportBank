@@ -1,0 +1,30 @@
+{
+  "name": "supportbank",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsc && node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grecubogdan-13/SupportBank.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/grecubogdan-13/SupportBank/issues"
+  },
+  "homepage": "https://github.com/grecubogdan-13/SupportBank#readme",
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "csv": "^6.1.3",
+    "csv-parser": "^3.0.0",
+    "d3-request": "^1.0.6",
+    "moment": "^2.29.3"
+  }
+}
