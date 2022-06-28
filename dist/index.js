@@ -1,38 +1,16 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const readline = __importStar(require("readline"));
-let rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
+var log4js = require("log4js");
+var logger = log4js.getLogger("Transactions");
+log4js.configure({
+    appenders: {
+        file: { type: 'fileSync', filename: 'logs/debug.log' }
+    },
+    categories: {
+        default: { appenders: ['file'], level: 'debug' }
+    }
 });
-let fs = require("fs");
-let textByLine = fs.readFileSync("./Transactions2014.csv").toString().split("\r\n");
-console.log(textByLine);
-const res = textByLine.map((line) => line.split(","));
-console.log(res);
+let rl = require('readline-sync');
 class Record {
     constructor(date, from, to, narrative, sum) {
         this.date = "";
@@ -62,47 +40,72 @@ class Person {
         this.transactions.push(transaction);
     }
 }
-let records = [];
-for (let i = 1; i < res.length; i++) {
-    let date = res[i][0];
-    let to = res[i][1];
-    let from = res[i][2];
-    let narrative = res[i][3];
-    let sum = parseFloat(res[i][4]);
-    let record = new Record(date, to, from, narrative, sum);
-    records.push(record);
+function readFile(filename) {
+    let fs = require("fs");
+    if (fs.existsSync(filename)) {
+        let textByLine = fs.readFileSync(filename).toString().split("\r\n");
+        console.log(textByLine);
+        const res = textByLine.map((line) => line.split(","));
+        console.log(res);
+        return res;
+    }
+    else {
+        logger.log("Error", "File doesnt exist");
+    }
 }
+function parseDataArray(data_array) {
+    let records = [];
+    for (let i = 1; i < data_array.length; i++) {
+        let date = data_array[i][0];
+        let to = data_array[i][1];
+        let from = data_array[i][2];
+        let narrative = data_array[i][3];
+        if (isNaN(parseFloat(data_array[i][4]))) {
+            logger.log("Error", "Invalid Amount, check line " + i);
+        }
+        let sum = parseFloat(data_array[i][4]);
+        let record = new Record(date, to, from, narrative, sum);
+        records.push(record);
+    }
+    return records;
+}
+function evalTransactions(transactions) {
+    let people = [];
+    for (let i = 1; i < transactions.length; i++) {
+        let searchFrom = 0;
+        let negativeAmount = transactions[i].sum * (-1);
+        for (let j = 0; j < people.length; j++) {
+            if (transactions[i].from == people[j].name) {
+                people[j].transaction(negativeAmount);
+                people[j].addTransaction(transactions[i]);
+                searchFrom = 1;
+                break;
+            }
+        }
+        if (searchFrom == 0) {
+            let newPerson = new Person(transactions[i].from, negativeAmount);
+            people.push(newPerson);
+        }
+        let searchTo = 0;
+        for (let j = 0; j < people.length; j++) {
+            if (transactions[i].to == people[j].name) {
+                people[j].transaction(transactions[i].sum);
+                people[j].addTransaction(transactions[i]);
+                searchTo = 1;
+                break;
+            }
+        }
+        if (searchTo == 0) {
+            let newPerson = new Person(transactions[i].from, negativeAmount);
+            people.push(newPerson);
+        }
+    }
+    return people;
+}
+let running = 1;
 let people = [];
-for (let i = 1; i < records.length; i++) {
-    let searchFrom = 0;
-    let negativeAmount = records[i].sum * (-1);
-    for (let j = 0; j < people.length; j++) {
-        if (records[i].from == people[j].name) {
-            people[j].transaction(negativeAmount);
-            people[j].addTransaction(records[i]);
-            searchFrom = 1;
-            break;
-        }
-    }
-    if (searchFrom == 0) {
-        let newPerson = new Person(records[i].from, negativeAmount);
-        people.push(newPerson);
-    }
-    let searchTo = 0;
-    for (let j = 0; j < people.length; j++) {
-        if (records[i].to == people[j].name) {
-            people[j].transaction(records[i].sum);
-            people[j].addTransaction(records[i]);
-            searchTo = 1;
-            break;
-        }
-    }
-    if (searchTo == 0) {
-        let newPerson = new Person(records[i].from, negativeAmount);
-        people.push(newPerson);
-    }
-}
-rl.question('Give a command ', (answer) => {
+while (running) {
+    let answer = rl.question('Give a command ');
     if (answer == "List All") {
         for (let i = 0; i < people.length; i++) {
             process.stdout.write(people[i].name);
@@ -110,6 +113,9 @@ rl.question('Give a command ', (answer) => {
             process.stdout.write(people[i].money.toString());
             console.log();
         }
+    }
+    else if (answer == "Exit") {
+        running = 0;
     }
     else {
         let text = answer.split(" ");
@@ -127,7 +133,16 @@ rl.question('Give a command ', (answer) => {
                 }
             }
         }
+        else if (text[0] == "Add") {
+            let name = answer.substring(4);
+            let data_array = readFile(name);
+            let transactions = parseDataArray(data_array);
+            people = evalTransactions(transactions);
+        }
     }
-    rl.close();
-});
+    logger.log("debug", "proba");
+}
+//let data_array = readFile("./DodgyTransactions2015.csv");
+//let transactions = parseDataArray(data_array);
+//let people = evalTransactions(transactions);
 //# sourceMappingURL=index.js.map
