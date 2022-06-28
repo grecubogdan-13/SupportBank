@@ -1,5 +1,9 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = __importDefault(require("fs"));
 var log4js = require("log4js");
 var logger = log4js.getLogger("Transactions");
 log4js.configure({
@@ -40,23 +44,39 @@ class Person {
         this.transactions.push(transaction);
     }
 }
-function readFile(filename) {
+function readCSVFile(filename) {
     let fs = require("fs");
-    if (fs.existsSync(filename)) {
-        let textByLine = fs.readFileSync(filename).toString().split("\r\n");
-        console.log(textByLine);
-        const res = textByLine.map((line) => line.split(","));
-        console.log(res);
-        return res;
+    let textByLine = fs.readFileSync(filename).toString().split("\r\n");
+    console.log(textByLine);
+    const res = textByLine.map((line) => line.split(","));
+    console.log(res);
+    return res;
+}
+function readJSONFile(filename) {
+    let fs = require("fs");
+    let transactions = JSON.parse(fs.readFileSync(filename).toString());
+    console.log(transactions);
+    let transactionsString = [];
+    for (let i = 1; i < transactions.length; i++) {
+        let transactionString = [];
+        console.log(transactions[i]);
+        transactionString.push(transactions[i]["Date"]);
+        transactionString.push(transactions[i]["FromAccount"]);
+        transactionString.push(transactions[i]["ToAccount"]);
+        transactionString.push(transactions[i]["Narrative"]);
+        transactionString.push(transactions[i]["Amount"]);
+        transactionsString.push(transactionString);
     }
-    else {
-        logger.log("Error", "File doesnt exist");
-    }
+    console.log(transactionsString);
+    return transactionsString;
 }
 function parseDataArray(data_array) {
     let records = [];
-    for (let i = 1; i < data_array.length; i++) {
+    for (let i = 0; i < data_array.length; i++) {
         let date = data_array[i][0];
+        if (!date.match(/[0-9].[0-9].\/[0-9].[0-9].\/[0-9].[0-9].[0-9].[0-9]./g) || !date.match(/[0-9].[0-9].[0-9].[0-9].-[0-9].[0-9]-[0-9].[0-9].T[0-9].[0-9].:[0-9].[0-9].:[0-9].[0-9]./g)) {
+            logger.log("Error", "Wrong Date, check line " + i);
+        }
         let to = data_array[i][1];
         let from = data_array[i][2];
         let narrative = data_array[i][3];
@@ -71,7 +91,7 @@ function parseDataArray(data_array) {
 }
 function evalTransactions(transactions) {
     let people = [];
-    for (let i = 1; i < transactions.length; i++) {
+    for (let i = 0; i < transactions.length; i++) {
         let searchFrom = 0;
         let negativeAmount = transactions[i].sum * (-1);
         for (let j = 0; j < people.length; j++) {
@@ -84,6 +104,7 @@ function evalTransactions(transactions) {
         }
         if (searchFrom == 0) {
             let newPerson = new Person(transactions[i].from, negativeAmount);
+            newPerson.addTransaction(transactions[i]);
             people.push(newPerson);
         }
         let searchTo = 0;
@@ -96,7 +117,8 @@ function evalTransactions(transactions) {
             }
         }
         if (searchTo == 0) {
-            let newPerson = new Person(transactions[i].from, negativeAmount);
+            let newPerson = new Person(transactions[i].to, negativeAmount);
+            newPerson.addTransaction(transactions[i]);
             people.push(newPerson);
         }
     }
@@ -135,9 +157,23 @@ while (running) {
         }
         else if (text[0] == "Add") {
             let name = answer.substring(4);
-            let data_array = readFile(name);
-            let transactions = parseDataArray(data_array);
-            people = evalTransactions(transactions);
+            if (fs_1.default.existsSync(name)) {
+                if (name.match(/.+.csv/g)) {
+                    let data_array = readCSVFile(name);
+                    let transactions = parseDataArray(data_array);
+                    people = evalTransactions(transactions);
+                }
+                else if (name.match(/.+.json/g)) {
+                    let data_array = readJSONFile(name);
+                    console.log(data_array);
+                    let transactions = parseDataArray(data_array);
+                    people = evalTransactions(transactions);
+                    console.log(people.length);
+                }
+            }
+            else {
+                logger.log("Error", "File doesnt exist");
+            }
         }
     }
     logger.log("debug", "proba");

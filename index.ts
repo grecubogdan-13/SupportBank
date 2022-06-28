@@ -51,24 +51,41 @@ class Person {
     }
 }
 
-function readFile(filename: string){
+function readCSVFile(filename: string){
     let fs = require("fs");
-    if(fs.existsSync(filename)) {
-        let textByLine = fs.readFileSync(filename).toString().split("\r\n");
-        console.log(textByLine);
-        const res = textByLine.map((line: string) => line.split(","));
-        console.log(res)
-        return res;
+    let textByLine = fs.readFileSync(filename).toString().split("\r\n");
+    console.log(textByLine);
+    const res = textByLine.map((line: string) => line.split(","));
+    console.log(res)
+    return res;
+}
+
+function readJSONFile(filename: string){
+    let fs = require("fs");
+    let transactions = JSON.parse(fs.readFileSync(filename).toString());
+    console.log(transactions);
+    let transactionsString: string[][] = [];
+    for(let i = 0; i < transactions.length; i++){
+        let transactionString: string[] = [];
+        console.log(transactions[i]);
+        transactionString.push(transactions[i]["Date"]);
+        transactionString.push(transactions[i]["FromAccount"]);
+        transactionString.push(transactions[i]["ToAccount"]);
+        transactionString.push(transactions[i]["Narrative"]);
+        transactionString.push(transactions[i]["Amount"]);
+        transactionsString.push(transactionString);
     }
-    else {
-        logger.log("Error","File doesnt exist");
-    }
+    console.log(transactionsString);
+    return transactionsString;
 }
 
 function parseDataArray(data_array: string[][]){
     let records = [];
-    for(let i = 1; i < data_array.length; i++) {
+    for(let i = 0; i < data_array.length; i++) {
         let date = data_array[i][0];
+        if(!date.match(/[0-9].[0-9].\/[0-9].[0-9].\/[0-9].[0-9].[0-9].[0-9]./g) || !date.match(/[0-9].[0-9].[0-9].[0-9].-[0-9].[0-9]-[0-9].[0-9].T[0-9].[0-9].:[0-9].[0-9].:[0-9].[0-9]./g)){
+            logger.log("Error","Wrong Date, check line " + i);
+        }
         let to = data_array[i][1];
         let from = data_array[i][2];
         let narrative = data_array[i][3];
@@ -85,7 +102,7 @@ function parseDataArray(data_array: string[][]){
 function evalTransactions(transactions: Record[]){
     let people: Person[] = [];
 
-    for(let i = 1; i < transactions.length; i++) {
+    for(let i = 0; i < transactions.length; i++) {
         let searchFrom = 0;
         let negativeAmount = transactions[i].sum * (-1);
         for(let j = 0; j < people.length; j++) {
@@ -98,6 +115,7 @@ function evalTransactions(transactions: Record[]){
         }
         if(searchFrom == 0){
             let newPerson = new Person(transactions[i].from,negativeAmount);
+            newPerson.addTransaction(transactions[i]);
             people.push(newPerson)
         }
         let searchTo = 0;
@@ -110,7 +128,8 @@ function evalTransactions(transactions: Record[]){
             }
         }
         if(searchTo == 0){
-            let newPerson = new Person(transactions[i].from,negativeAmount);
+            let newPerson = new Person(transactions[i].to,negativeAmount);
+            newPerson.addTransaction(transactions[i]);
             people.push(newPerson)
         }
     }
@@ -151,9 +170,23 @@ while(running){
         }
         else if(text[0] == "Add") {
             let name = answer.substring(4);
-            let data_array = readFile(name);
-            let transactions = parseDataArray(data_array);
-            people = evalTransactions(transactions);
+            if(fs.existsSync(name)) {
+                if (name.match(/.+.csv/g)) {
+                    let data_array = readCSVFile(name);
+                    let transactions = parseDataArray(data_array);
+                    people = evalTransactions(transactions);
+                }
+                else if (name.match(/.+.json/g)) {
+                    let data_array = readJSONFile(name);
+                    console.log(data_array);
+                    let transactions = parseDataArray(data_array);
+                    people = evalTransactions(transactions);
+                    console.log(people.length);
+                }
+            }
+            else {
+                logger.log("Error","File doesnt exist");
+            }
         }
     }
     logger.log("debug","proba") ;
