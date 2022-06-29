@@ -1,6 +1,6 @@
 import fs from "fs";
-var log4js = require("log4js");
-var logger = log4js.getLogger("Transactions");
+const log4js = require("log4js");
+const logger = log4js.getLogger("Transactions");
 
 log4js.configure({
     appenders: {
