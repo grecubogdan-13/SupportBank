@@ -1,8 +1,13 @@
 import * as readline from 'readline';
 import fs from "fs";
+import * as xml2js from "xml2js";
 import {Debugger} from "inspector";
+const { XMLParser, XMLBuilder, XMLValidator} = require("../node_modules/fast-xml-parser");
+
 var log4js = require("log4js");
 var logger = log4js.getLogger("Transactions");
+
+
 
 log4js.configure({
     appenders: {
@@ -55,7 +60,9 @@ function readCSVFile(filename: string){
     let fs = require("fs");
     let textByLine = fs.readFileSync(filename).toString().split("\r\n");
     console.log(textByLine);
-    const res = textByLine.map((line: string) => line.split(","));
+    let res = textByLine.map((line: string) => line.split(","));
+    console.log(res)
+    res = res.slice(1);
     console.log(res)
     return res;
 }
@@ -79,11 +86,42 @@ function readJSONFile(filename: string){
     return transactionsString;
 }
 
+function readXMLFile(filename: string){
+    let fs = require("fs");
+    let transactions = fs.readFileSync(filename).toString();
+    const {XMLParser} = require('fast-xml-parser');
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_"
+    });
+    //console.log(transactions);
+    let parsedData = parser.parse(transactions);
+    let transactionsList = parsedData["TransactionList"]["SupportTransaction"];
+    let transactionsString: string[][] = [];
+    for(let i = 0; i < transactionsList.length; i++){
+        let transactionString: string[] = [];
+        //console.log(transactionsList[i]);
+        let parsedDate = new Date( (parseInt(transactionsList[i]["@_Date"]) - 25568) * 86400000);
+        console.log(transactionsList["@_Date"]);
+        transactionString.push(parsedDate.toString());
+        transactionString.push(transactionsList[i]["Parties"]["From"]);
+        transactionString.push(transactionsList[i]["Parties"]["To"]);
+        transactionString.push(transactionsList[i]["Description"]);
+        transactionString.push(transactionsList[i]["Value"].toString());
+        transactionsString.push(transactionString);
+    }
+    console.log(transactionsString);
+    return transactionsString;
+}
+
 function parseDataArray(data_array: string[][]){
     let records = [];
     for(let i = 0; i < data_array.length; i++) {
         let date = data_array[i][0];
-        if(!date.match(/[0-9].[0-9].\/[0-9].[0-9].\/[0-9].[0-9].[0-9].[0-9]./g) || !date.match(/[0-9].[0-9].[0-9].[0-9].-[0-9].[0-9]-[0-9].[0-9].T[0-9].[0-9].:[0-9].[0-9].:[0-9].[0-9]./g)){
+        let dateOkCSV = date.match(/[0-9].[0-9].\/[0-9].[0-9].\/[0-9].[0-9].[0-9].[0-9]./g);
+        let dateOkJSON = date.match(/[0-9].[0-9].[0-9].[0-9].-[0-9].[0-9]-[0-9].[0-9].T[0-9].[0-9].:[0-9].[0-9].:[0-9].[0-9]./g);
+        let dateOkXML = date.match(/[A-Z].[a-z].[a-z]. [A-Z].[a-z].[a-z]. [0-9].[0-9]. [0-9].[0-9].:[0-9].[0-9].:[0-9].[0-9]. GMT\+0100 \(British Summer Time\)/g)
+        if(!dateOkCSV && !dateOkJSON && !dateOkXML){
             logger.log("Error","Wrong Date, check line " + i);
         }
         let to = data_array[i][1];
@@ -178,10 +216,13 @@ while(running){
                 }
                 else if (name.match(/.+.json/g)) {
                     let data_array = readJSONFile(name);
-                    console.log(data_array);
                     let transactions = parseDataArray(data_array);
                     people = evalTransactions(transactions);
-                    console.log(people.length);
+                }
+                else if (name.match(/.+.xml/g)) {
+                    let data_array = readXMLFile(name);
+                    let transactions = parseDataArray(data_array);
+                    people = evalTransactions(transactions);
                 }
             }
             else {
