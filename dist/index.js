@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
-var log4js = require("log4js");
-var logger = log4js.getLogger("Transactions");
+const log4js = require("log4js");
+const logger = log4js.getLogger("Transactions");
 log4js.configure({
     appenders: {
         file: { type: 'fileSync', filename: 'logs/debug.log' }
@@ -116,8 +116,8 @@ function evalTransactions(transactions) {
     let people = [];
     transactions.forEach((transaction) => {
         let negativeAmount = transaction.sum * (-1);
-        let searchFrom = people.filter((person) => transaction.from == person.name);
-        if (searchFrom.length == 0) {
+        let searchFrom = people.filter((person) => transaction.from === person.name);
+        if (searchFrom.length === 0) {
             let newPerson = new Person(transaction.from, negativeAmount);
             newPerson.addTransaction(transaction);
             people.push(newPerson);
@@ -127,8 +127,8 @@ function evalTransactions(transactions) {
             people[indexOfFrom].transaction(negativeAmount);
             people[indexOfFrom].addTransaction(transaction);
         }
-        let searchTo = people.filter((person) => transaction.to == person.name);
-        if (searchTo.length == 0) {
+        let searchTo = people.filter((person) => transaction.to === person.name);
+        if (searchTo.length === 0) {
             let newPerson = new Person(transaction.to, transaction.sum);
             newPerson.addTransaction(transaction);
             people.push(newPerson);
@@ -145,7 +145,7 @@ let running = 1;
 let people = [];
 while (running) {
     let answer = rl.question('Give a command ');
-    if (answer == "List All") {
+    if (answer === "List All") {
         people.forEach((person) => {
             process.stdout.write(person.name);
             process.stdout.write(" ");
@@ -153,16 +153,16 @@ while (running) {
             console.log();
         });
     }
-    else if (answer == "Exit") {
+    else if (answer === "Exit") {
         running = 0;
     }
     else {
         let text = answer.split(" ");
-        if (text[0] == "List") {
+        if (text[0] === "List") {
             let name = answer.substring(5);
             console.log(name);
             let foundPerson = people.filter((person) => person.name == name);
-            if (foundPerson.length == 0) {
+            if (foundPerson.length === 0) {
                 logger.log("Warning", "User not found");
             }
             else {
@@ -173,7 +173,7 @@ while (running) {
                 console.log(foundPerson[0].transactions);
             }
         }
-        else if (text[0] == "Add") {
+        else if (text[0] === "Add") {
             let name = answer.substring(4);
             if (fs_1.default.existsSync(name)) {
                 if (name.match(/.+.csv/g)) {
